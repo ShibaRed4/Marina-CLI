@@ -17,7 +17,7 @@ A lightweight and powerful CLI tool for the Marina Game Engine.
 
 ### Using npm
 ```
-npm install -g marina
+npm install -g @junnie/marina
 ```
 
 ## Usage:

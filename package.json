@@ -1,0 +1,34 @@
+{
+    "name": "@junnie/marina",
+    "version": "1.0.0",
+    "description": "A lightweight and powerful CLI tool for the Marina Game Engine.",
+    "main": "bin/marina.js",
+    "type": "module",
+    "bin": {
+      "marina": "./bin/index.js"
+    },
+    "scripts": {
+      "start": "node bin/index.js"
+    },
+    "keywords": [
+      "cli",
+      "marina",
+      "game-engine",
+      "tool"
+    ],
+    "author": "Junnie",
+    "license": "MIT",
+    "files": [
+      "bin/",
+      "assets/",
+      "commands/",
+      "lib/",
+      "assets/"
+    ],
+    "dependencies": {
+      "chalk": "^5.0.0",
+      "readline":"^1.3.0",
+      "vite": "^6.2.1"
+    }
+  }
+  

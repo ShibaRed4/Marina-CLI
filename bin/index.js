@@ -1,7 +1,10 @@
-import PrettyCLI from './lib/cli.js';
-import initCommand from './commands/init.js';
-import serveCommand from './commands/serve.js';
-import compileCommand from './commands/compile.js'
+#!/usr/bin/env node
+
+
+import PrettyCLI from '../lib/cli.js';
+import initCommand from '../commands/init.js';
+import serveCommand from '../commands/serve.js';
+import compileCommand from '../commands/compile.js'
 
 const cli = new PrettyCLI('Marina');
 
