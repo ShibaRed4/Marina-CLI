@@ -2,6 +2,9 @@ import Game from "./Game";
 import InstanceManager, { InstanceType } from "./InstanceManager";
 import Render from "./Render";
 import enigma from "../enigma/index.js";
+import Util from "./Util"
+import InputService from './InputService'
+import {initInterop} from '../enigma/core/interop.js'
 
 const canvas = document.querySelector(".main");
 const context = canvas.getContext("2d"); // Corrected type
@@ -10,10 +13,17 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 const Enigma = enigma.init("../src");
+
+initInterop();
+
 const MainRenderer = new Render(context); // Pass InputService and Player
 const MainInstanceManager = new InstanceManager(MainRenderer);
 const MainCamera = MainInstanceManager.new("Camera");
 const MainGame = new Game(MainInstanceManager, context);
+
+enigma.exportClassAsService("Instance", MainInstanceManager)
+enigma.exportClassAsService("Util", Util)
+enigma.exportService("InputService", new InputService())
 
 async function loadScripts() {
     // Dynamically import all Lua scripts from the src folder
@@ -34,12 +44,12 @@ async function loadScripts() {
         const luaScript = await Enigma.loadScriptFromRoot(prunedFilePath);
   
         // Call the `init` function if it exists
-        await luaScript.callFunction("init");
+        await luaScript.callFunction("init", window);
   
         // Add the `onUpdate` function to the render loop if it exists
         MainRenderer.renderFunctions.push(
           async (deltaTime) =>
-            await luaScript.callFunction("onUpdate", deltaTime)
+            await luaScript.callFunction("onUpdate", deltaTime, window)
         );
       } catch (error) {
         console.error(`Error executing script from ${filePath}:`, error);
