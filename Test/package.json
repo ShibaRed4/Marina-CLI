@@ -1,8 +1,0 @@
-{
-  "type": "module",
-  "dependencies": {
-    "fengari": "^0.1.4",
-    "fengari-web": "^0.1.4",
-    "vite": "^6.2.1"
-  }
-}
