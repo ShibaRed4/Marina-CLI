@@ -1,6 +1,7 @@
 import Animation from "./Animation";
 import EventEmitter from "./Events";
 import Util, { Color } from "./Util";
+import { enhanceEventEmitterInstance } from '../enigma/core/interop.js';
 
 type Vector2 = {
   x: number;
@@ -99,8 +100,20 @@ class InstanceManager {
             entity: Instance,
             overlaps: { xOverlap: number; yOverlap: number },
           ) {
-            this.eventEmitter.emit("Collided", entity, overlaps); // Use eventEmitter
+            // Convert complex objects to simple string representations
+            const entityStr = JSON.stringify({
+              name: entity.Name || "unnamed",
+              type: entity.instanceType || "unknown",
+              overlap: {
+                x: overlaps.xOverlap,
+                y: overlaps.yOverlap
+              }
+            });
+            
+            // Emit with string parameters
+            this.eventEmitter.emit("Collided", entity, overlaps);
           },
+          
           Texture: null as HTMLImageElement | null, // Initialize to null
         };
       case InstanceType.Camera:

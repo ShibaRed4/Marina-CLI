@@ -4,7 +4,7 @@ import Render from "./Render";
 import enigma from "../enigma/index.js";
 import Util from "./Util"
 import InputService from './InputService'
-import {initInterop} from '../enigma/core/interop.js'
+
 
 const canvas = document.querySelector(".main");
 const context = canvas.getContext("2d"); // Corrected type
@@ -14,7 +14,6 @@ canvas.height = window.innerHeight;
 
 const Enigma = enigma.init("../src");
 
-initInterop();
 
 const MainRenderer = new Render(context); // Pass InputService and Player
 const MainInstanceManager = new InstanceManager(MainRenderer);
