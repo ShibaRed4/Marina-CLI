@@ -2,21 +2,28 @@ import fs from "node:fs";
 import path from "node:path";
 import chalk from "chalk";
 import process from "node:process";
+import { fileURLToPath } from "url";
 
 export default (cli) => {
   cli.registerCommand("init", "Starts a fresh new project!", async () => {
-    console.clear()
+    console.clear();
     const projectName = await cli.prompt(
       chalk.cyanBright.bold("📦 Project Name: ")
     );
 
     // Define the source and destination paths
-    const sourceDir = path.resolve("assets"); // Path to the "assets" folder
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+
+    const sourceDir = path.join(__dirname, "../assets");
+
     const destDir = path.resolve(projectName); // Path to the new project folder
 
     // Check if the source directory exists
     if (!fs.existsSync(sourceDir)) {
-      console.log(chalk.redBright(`\n❌ The "assets" folder does not exist.\n`));
+      console.log(
+        chalk.redBright(`\n❌ The "assets" folder does not exist.\n`)
+      );
       process.exit(1);
     }
 
@@ -24,7 +31,9 @@ export default (cli) => {
     if (!fs.existsSync(destDir)) {
       fs.mkdirSync(destDir, { recursive: true });
       console.log(
-        chalk.greenBright(`\n✅ Created project folder: ${chalk.yellowBright(projectName)}\n`)
+        chalk.greenBright(
+          `\n✅ Created project folder: ${chalk.yellowBright(projectName)}\n`
+        )
       );
     } else {
       console.log(
@@ -60,23 +69,14 @@ export default (cli) => {
     copyRecursive(sourceDir, destDir);
 
     // Create the marina.config.json file
-    const defaultMarinaConfig = {
-      projectName: projectName,
-    };
-
-    fs.writeFileSync(
-      path.join(destDir, "marina.config.json"),
-      JSON.stringify(defaultMarinaConfig, null, 2)
-    );
-    console.log(
-      chalk.greenBright(`✅ Created ${chalk.bold("marina.config.json")}`)
-    );
 
     // Create package.json
     const defaultPackageJson = {
+      type: "module",
       dependencies: {
         "fengari": "^0.1.4",
         "fengari-web": "^0.1.4",
+        "vite": "^6.2.1"
       },
     };
 
@@ -84,9 +84,8 @@ export default (cli) => {
       path.join(destDir, "package.json"),
       JSON.stringify(defaultPackageJson, null, 2)
     );
-    console.log(
-      chalk.greenBright(`✅ Created ${chalk.bold("package.json")}`)
-    );
+
+    console.log(chalk.greenBright(`✅ Created ${chalk.bold("package.json")}`));
 
     // Final success message
     console.log(
@@ -100,7 +99,9 @@ export default (cli) => {
     // Instructions for the user
     console.log(
       chalk.bold.cyanBright("🚀 Next steps:\n") +
-        chalk.bold(`1️⃣  ${chalk.white("cd")} ${chalk.yellowBright(projectName)}\n`) +
+        chalk.bold(
+          `1️⃣  ${chalk.white("cd")} ${chalk.yellowBright(projectName)}\n`
+        ) +
         chalk.bold(`2️⃣  ${chalk.white("[npm|bun|yarn|deno|npx] install")}\n`) +
         chalk.bold(`3️⃣  ${chalk.white("marina serve")}\n`)
     );

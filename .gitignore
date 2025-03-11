@@ -3,3 +3,4 @@ node_modules
 deno.json
 deno.lock
 marina.exe
+./Test/*

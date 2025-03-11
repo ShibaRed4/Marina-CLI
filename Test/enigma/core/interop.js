@@ -56,76 +56,8 @@ export function getRegisteredClass(luaName) {
   return registeredClasses.get(luaName);
 }
 
-/**
- * Explicitly convert a JavaScript object to a Lua table
- * This ensures all properties are accessible in Lua code
- */
-export function jsObjectToLuaTable(obj, visited = new Set()) {
-  const L = getLuaState();
-  
-  // Handle null or undefined
-  if (obj === null || obj === undefined) {
-    lua.lua_pushnil(L);
-    return;
-  }
-  
-  // Avoid circular references
-  if (visited.has(obj)) {
-    lua.lua_pushstring(L, toLuaString("[Circular Reference]"));
-    return;
-  }
-  
-  // Only process plain objects, arrays, and non-function instances
-  if (typeof obj !== 'object') {
-    pushValue(obj);
-    return;
-  }
-  
-  // Add to visited set to prevent circular references
-  visited.add(obj);
-  
-  // Create a new table
-  lua.lua_newtable(L);
-  
-  try {
-    // For arrays, use numeric indices
-    if (Array.isArray(obj)) {
-      for (let i = 0; i < obj.length; i++) {
-        lua.lua_pushnumber(L, i + 1); // Lua arrays are 1-indexed
-        jsObjectToLuaTable(obj[i], new Set(visited));
-        lua.lua_settable(L, -3);
-      }
-    } 
-    // For objects, use string keys
-    else {
-      for (const [key, value] of Object.entries(obj)) {
-        // Special handling for overlap object to normalize properties
-        if (key === 'xOverlap') {
-          lua.lua_pushstring(L, toLuaString('x'));
-        } else if (key === 'yOverlap') {
-          lua.lua_pushstring(L, toLuaString('y'));
-        } else {
-          lua.lua_pushstring(L, toLuaString(key));
-        }
-        
-        if (typeof value === 'object' && value !== null) {
-          jsObjectToLuaTable(value, new Set(visited));
-        } else {
-          pushValue(value);
-        }
-        lua.lua_settable(L, -3);
-      }
-    }
-  } catch (error) {
-    console.error("Error converting JS object to Lua table:", error);
-    // In case of error, ensure we don't leave the stack unbalanced
-    lua.lua_pop(L, 1);
-    lua.lua_pushnil(L);
-  }
-}
-
 // Push a JavaScript value onto the Lua stack with detailed error handling
-export function pushValue(value, forceTable = false) {
+export function pushValue(value) {
   try {
     const L = getLuaState();
     
@@ -135,23 +67,14 @@ export function pushValue(value, forceTable = false) {
     }
     
     // Handle different value types
-    if (typeof value === "object") {
-      if (forceTable || shouldConvertToTable(value)) {
-        jsObjectToLuaTable(value);
-      } else {
-        interop.push(L, value);
-        
-        // Verify the push was successful
-        if (lua.lua_isnil(L, -1) && value !== null) {
-          console.warn(`Value of type ${typeof value} was pushed as nil, switching to table conversion`);
-          lua.lua_pop(L, 1);
-          jsObjectToLuaTable(value);
-        }
+    if (typeof value === "object" || typeof value === "function") {
+      interop.push(L, value);
+      
+      // Verify the push was successful
+      if (lua.lua_isnil(L, -1) && value !== null) {
+        console.warn(`Value of type ${typeof value} was pushed as nil, which might indicate an interop issue`);
       }
     } 
-    else if (typeof value === "function") {
-      interop.push(L, value);
-    }
     else if (typeof value === "string") {
       lua.lua_pushstring(L, toLuaString(value));
     } 
@@ -187,39 +110,6 @@ export function pushValue(value, forceTable = false) {
     const L = getLuaState();
     lua.lua_pushnil(L);
   }
-}
-
-// Helper function to determine if an object should be converted to a table
-function shouldConvertToTable(obj) {
-  // Special case for collision overlap objects
-  if (obj && typeof obj === 'object' && 
-      (obj.xOverlap !== undefined || obj.yOverlap !== undefined)) {
-    return true;
-  }
-  
-  // Simple data objects should be converted to tables
-  if (obj && typeof obj === 'object') {
-    // Check if it's a simple data object (not a complex class instance)
-    if (Object.getPrototypeOf(obj) === Object.prototype) {
-      return true;
-    }
-    
-    // Also convert arrays
-    if (Array.isArray(obj)) {
-      return true;
-    }
-    
-    // Convert objects with only data properties (no methods)
-    const hasOnlyDataProps = Object.entries(obj).every(([_, val]) => 
-      typeof val !== 'function'
-    );
-    
-    if (hasOnlyDataProps && Object.keys(obj).length > 0) {
-      return true;
-    }
-  }
-  
-  return false;
 }
 
 // Convert a Lua value at the given stack index to a JavaScript value with better error handling
@@ -291,12 +181,7 @@ export function callLuaFunction(moduleRef, funcName, ...args) {
     
     // Push arguments
     for (const arg of args) {
-      // Force table conversion for objects that will be accessed as tables in Lua
-      if (typeof arg === 'object' && arg !== null) {
-        pushValue(arg, true);
-      } else {
-        pushValue(arg);
-      }
+      pushValue(arg);
     }
     
     // Call the function with the correct number of arguments
@@ -401,32 +286,64 @@ export function setupDebugHelpers() {
       -- Call the method with the object as first parameter (self)
       return method(obj, ...)
     end
-    
-    -- Helper to dump table contents
-    function dump(t, indent)
-      indent = indent or ""
-      if type(t) ~= "table" then
-        print(indent .. tostring(t))
-        return
-      end
-      
-      for k, v in pairs(t) do
-        if type(v) == "table" then
-          print(indent .. tostring(k) .. " = {")
-          dump(v, indent .. "  ")
-          print(indent .. "}")
-        else
-          print(indent .. tostring(k) .. " = " .. tostring(v))
-        end
-      end
-    end
     `)
   );
   
   console.log("Debug helpers set up in Lua environment");
 }
 
-// Initialize interop functionality
-export function initInterop() {
+// Add this function to your existing interop.js file
+// Add this function to your interop.js file
+export function enhanceEventEmitterInstance(emitter) {
+  if (!emitter || typeof emitter.emit !== 'function') {
+    console.warn("Invalid EventEmitter instance provided");
+    return emitter;
+  }
+  
+  // Save the original emit method
+  const originalEmit = emitter.emit;
+  
+  // Replace the emit method with our enhanced version
+  emitter.emit = function(event, ...args) {
+    console.log(`Emitting event: ${event} with args:`, args);
+    
+    // Process the arguments for better Lua compatibility
+    const processedArgs = [];
+    
+    // First argument is usually the entity, keep it as is
+    if (args.length > 0) {
+      processedArgs.push(args[0]);
+    }
+    
+    // Handle overlap object specially
+    if (args.length > 1 && args[1] && typeof args[1] === 'object') {
+      const overlap = args[1];
+      // Add x and y values as separate parameters
+      if (overlap.xOverlap !== undefined) {
+        processedArgs.push(overlap.xOverlap);
+      }
+      if (overlap.yOverlap !== undefined) {
+        processedArgs.push(overlap.yOverlap);
+      }
+    } else {
+      // Add remaining args normally
+      for (let i = 1; i < args.length; i++) {
+        processedArgs.push(args[i]);
+      }
+    }
+    
+    // Call the original emit with processed args
+    console.log("Processed args:", processedArgs);
+    return originalEmit.call(this, event, ...processedArgs);
+  };
+  
+  console.log("Enhanced EventEmitter instance");
+  return emitter;
+}
+
+
+
+export function initInterop(){
   setupDebugHelpers();
+  enhanceEventEmitterInstance();
 }
